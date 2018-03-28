@@ -96,7 +96,7 @@ class BotAnalyzer:
     def board_size(self):
         node_boardsize = self.cursor.node.get('SZ')
         if node_boardsize:
-            board_size = int(node_boardsize.data[0])
+            board_size = int(node_boardsize[0])
             if board_size != 19:
                 logger.warning("Board size is not 19 so analysis could be very inaccurate.")
         else:
@@ -108,14 +108,14 @@ class BotAnalyzer:
     def handicap(self):
         node_handicap = self.cursor.node.get('HA')
         if node_handicap:
-            return int(node_handicap.data[0])
+            return int(node_handicap[0])
         else:
             return 0
 
     @property
     def japanese_rules(self):
         node_rules = self.cursor.node.get('RU')
-        return node_rules and node_rules.data[0].lower() in ['jp', 'japanese', 'japan']
+        return node_rules and node_rules[0].lower() in ['jp', 'japanese', 'japan']
 
     @property
     def komi(self):
@@ -123,7 +123,7 @@ class BotAnalyzer:
         node_komi = self.cursor.node.get('KM')
 
         if node_komi:
-            komi = round(float(node_komi.data[0]), 1)
+            komi = round(float(node_komi[0]), 1)
 
             if self.japanese_rules:
                 komi += self.handicap
@@ -198,23 +198,25 @@ class BotAnalyzer:
         plt.close()
 
     def add_moves_to_bot(self):
+        current_node = self.cursor.node
+
         this_move = None
 
-        if 'W' in self.cursor.node.keys():
-            this_move = self.cursor.node['W'].data[0]
+        if 'W' in current_node:
+            this_move = current_node['W'][0]
             self.bot.add_move_to_history('white', this_move)
 
-        if 'B' in self.cursor.node.keys():
-            this_move = self.cursor.node['B'].data[0]
+        if 'B' in current_node:
+            this_move = current_node['B'][0]
             self.bot.add_move_to_history('black', this_move)
 
         # SGF commands to add black or white stones, often used for setting up handicap and such
-        if 'AB' in self.cursor.node.keys():
-            for move in self.cursor.node['AB'].data:
+        if 'AB' in current_node:
+            for move in current_node['AB']:
                 self.bot.add_move_to_history('black', move)
 
-        if 'AW' in self.cursor.node.keys():
-            for move in self.cursor.node['AW'].data:
+        if 'AW' in current_node:
+            for move in current_node['AW']:
                 self.bot.add_move_to_history('white', move)
 
         return this_move
@@ -224,10 +226,14 @@ class BotAnalyzer:
 
         if not self.cursor.atEnd:
             self.cursor.next()
-            if 'W' in self.cursor.node.keys():
-                mv = self.cursor.node['W'].data[0]
-            if 'B' in self.cursor.node.keys():
-                mv = self.cursor.node['B'].data[0]
+            current_node = self.cursor.node
+
+            if 'W' in current_node:
+                mv = current_node['W'][0]
+
+            if 'B' in current_node:
+                mv = current_node['B'][0]
+
             self.cursor.previous()
 
         return mv
@@ -265,9 +271,8 @@ class BotAnalyzer:
             if CONFIG['move_from'] <= move_num + 1 <= CONFIG['move_till']:
                 self.moves_to_analyze[move_num] = True
 
-            node_comment = self.cursor.node.get('C')
-            if node_comment and CONFIG['wipe_comments']:
-                node_comment.data[0] = ""
+            if 'C' in self.cursor.node and CONFIG['wipe_comments']:
+                del self.cursor.node['C']
 
     def analyze_main_line(self):
         logger.info("Started analyzing main line.")
@@ -278,7 +283,6 @@ class BotAnalyzer:
         has_prev = False
         previous_player = None
 
-        logger.info(f"Executing analysis for %d moves", len(self.moves_to_analyze))
         moves_count = 0
         self.cursor.reset()
         self.bot = self.factory()
